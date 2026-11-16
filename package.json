@@ -6,6 +6,6 @@
   "scripts": {
     "local": "node scripts/local-server.js"
   },
-  "engines": { "node": ">=18" },
+  "engines": { "node": "22.x" },
   "license": "MIT"
 }
