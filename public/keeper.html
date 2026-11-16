@@ -95,7 +95,7 @@
       <section class="panel">
         <h3>Players join at</h3>
         <div class="urls" id="urls"></div>
-        <p class="muted small">Everyone must be on the same Wi-Fi as this computer.</p>
+        <p class="muted small" id="urlsNote"></p>
       </section>
 
       <section class="panel">
@@ -147,8 +147,10 @@ const tokenStore = {
   set(v) { try { v ? sessionStorage.setItem('vsa-keeper', v) : sessionStorage.removeItem('vsa-keeper'); } catch {} },
 };
 let token = tokenStore.get();
-let es = null;
 let S = null;
+let version = 0;
+let pollTimer = null;
+let polling = false;
 
 function el(tag, props = {}, ...kids) {
   const e = document.createElement(tag);
@@ -168,6 +170,8 @@ async function act(action, extra = {}) {
     const d = await r.json().catch(() => ({}));
     if (r.status === 401) return lock();
     if (!r.ok) throw new Error(d.error || 'Something went wrong');
+    if (d.v) version = d.v;
+    if (d.view) render(d.view);
   } catch (e) { $('#actionError').textContent = e.message; }
 }
 
@@ -180,7 +184,7 @@ function ask(text, label, onYes) {
 $('#confirmNo').onclick = () => { $('#confirm').hidden = true; };
 
 function lock() {
-  if (es) { es.close(); es = null; }
+  clearTimeout(pollTimer);
   token = null; tokenStore.set(null);
   $('#dash').hidden = true; $('#loginView').hidden = false;
   $('#passcode').value = '';
@@ -198,17 +202,32 @@ $('#logout').onclick = lock;
 
 function open() {
   $('#loginView').hidden = true; $('#dash').hidden = false;
-  if (es) es.close();
-  es = new EventSource('/api/keeper/events?token=' + encodeURIComponent(token));
-  es.onopen = () => { $('#dot').classList.add('live'); $('#connText').textContent = 'Live'; };
-  es.onerror = async () => {
-    $('#dot').classList.remove('live'); $('#connText').textContent = 'Reconnecting';
-    // If the server restarted, the token is gone: check and lock if so.
-    const r = await fetch('/api/keeper/action', { method: 'POST', headers: { 'x-keeper-token': token }, body: '{}' }).catch(() => null);
-    if (r && r.status === 401) lock();
-  };
-  es.onmessage = e => render(JSON.parse(e.data));
+  version = 0;
+  poll();
 }
+
+// Ask the server for changes every 2 seconds.
+async function poll() {
+  clearTimeout(pollTimer);
+  if (!token || polling) return;
+  polling = true;
+  try {
+    const r = await fetch('/api/keeper/state?v=' + version, { headers: { 'x-keeper-token': token }, cache: 'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401) { polling = false; return lock(); }
+    if (!r.ok) throw new Error(d.error || 'Can\'t reach the game right now.');
+    $('#dot').classList.add('live'); $('#connText').textContent = 'Live';
+    if ($('#actionError').dataset.fromPoll) { $('#actionError').textContent = ''; delete $('#actionError').dataset.fromPoll; }
+    if (!d.same) { version = d.v; render(d.view); }
+  } catch (e) {
+    $('#dot').classList.remove('live'); $('#connText').textContent = 'Reconnecting';
+    if (e.message && !/fetch/i.test(e.message)) { $('#actionError').textContent = e.message; $('#actionError').dataset.fromPoll = '1'; }
+  } finally {
+    polling = false;
+    if (token) pollTimer = setTimeout(poll, document.hidden ? 8000 : 2000);
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
 
 function render(s) {
   S = s;
@@ -302,8 +321,11 @@ function render(s) {
 
   // urls
   $('#urls').innerHTML = '';
-  const urls = s.joinUrls.length ? s.joinUrls : [location.origin];
+  const urls = s.joinUrls && s.joinUrls.length ? s.joinUrls : [location.origin];
   urls.forEach(u => $('#urls').append(el('div', { textContent: u })));
+  $('#urlsNote').textContent = s.local
+    ? 'Everyone must be on the same Wi-Fi as this computer.'
+    : 'Works on any connection: Wi-Fi, LTE or 5G.';
 
   // settings (don't clobber while typing)
   if (document.activeElement !== $('#impostors')) $('#impostors').value = s.settings.impostors;

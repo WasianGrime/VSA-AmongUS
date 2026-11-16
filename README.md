@@ -18,29 +18,34 @@ A tracker for playing Among Us in real life. One person is the **Keeper** and ru
 - Impostors get fake tasks that don't count toward progress, and they can see who the other impostors are.
 - The game ends by itself when the crew finishes every task, when every impostor is out, or when the impostors equal the crew. The Keeper can also end it by hand.
 
-## Running it
+## Putting it on Vercel (play on any connection)
+
+On Vercel, players can join from Wi-Fi, LTE or 5G. The game is saved in a free Upstash Redis database that you add from inside Vercel.
+
+1. Import this repo into Vercel (or keep your existing project). No build settings are needed, since `vercel.json` handles them.
+2. In the project, open **Storage**, choose **Upstash for Redis** (it may be under Marketplace), create a free database and **connect it to this project**. Vercel adds the `KV_REST_API_URL` and `KV_REST_API_TOKEN` settings for you.
+3. **Redeploy** so the new settings take effect.
+4. Players open your Vercel address. The Keeper taps **I'm the Keeper** and enters the passcode.
+
+If the database isn't connected, the app shows a message saying so instead of failing silently.
+
+Phones check for updates every 2 seconds, and every 8 seconds when the screen is off. Each check is one database request, so a 10-player game uses about 18,000 requests an hour. Check your Upstash plan's monthly limit.
+
+## Running it on a laptop instead
 
 You need [Node.js](https://nodejs.org) 18 or newer. There's nothing to install.
 
 ```bash
-node server.js
+npm run local
 ```
 
-The terminal prints the addresses to use, for example:
+The terminal prints the address for players. Everyone must be on the same Wi-Fi as the laptop, and the game is saved to `data.json`.
 
-```
-  Players on Wi-Fi:   http://192.168.1.20:3000
-  Keeper dashboard:   add /keeper to the address
-```
+## Options
 
-1. Players open `http://<that address>` on their phones. They must be on the **same Wi-Fi** as the laptop.
-2. The Keeper opens the same address, taps **I'm the Keeper** at the top of the start screen, and enters the passcode. (Going straight to `/keeper` also works.)
+Set these as environment variables (in Vercel: **Settings → Environment Variables**, then redeploy).
 
-### Options
-
-| Setting | How to change it |
+| Setting | What it does |
 | --- | --- |
-| Port | `PORT=8080 node server.js` |
-| Keeper passcode | `KEEPER_PASSCODE=123456 node server.js` (default `250247`) |
-
-The game is saved to `data.json`, so restarting the server keeps the players and the round. Delete that file to start completely fresh.
+| `KEEPER_PASSCODE` | Keeper passcode (default `250247`) |
+| `PORT` | Port for the laptop version (default `3000`) |

@@ -158,19 +158,60 @@ const store = {
 };
 
 let playerId = store.get();
-let es = null;
 let last = null;
 let overDismissedAt = null;
+let version = 0;
+let pollTimer = null;
+let polling = false;
 
 async function post(url, body) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || 'Something went wrong');
+  if (data.view && playerId) apply(data);
   return data;
 }
 
+function setLive(ok) {
+  $('#dot').classList.toggle('live', ok);
+  $('#connText').textContent = ok ? 'Live' : 'Reconnecting';
+}
+
+function apply(data) {
+  if (data.v) version = data.v;
+  if (data.view) {
+    if (data.view.gone) {
+      store.set(null); playerId = null; showJoin();
+      $('#joinError').textContent = 'You were removed from the game. Join again to get a new ID.';
+      return;
+    }
+    render(data.view);
+  }
+}
+
+// Ask the server for changes every 2 seconds (less often when the phone screen is off).
+async function poll() {
+  clearTimeout(pollTimer);
+  if (!playerId || polling) return;
+  polling = true;
+  try {
+    const r = await fetch('/api/state?id=' + encodeURIComponent(playerId) + '&v=' + version, { cache: 'no-store' });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    setLive(true);
+    if (!data.same) apply(data);
+  } catch (e) {
+    setLive(false);
+  } finally {
+    polling = false;
+    if (playerId) pollTimer = setTimeout(poll, document.hidden ? 8000 : 2000);
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+
 function showJoin() {
-  if (es) { es.close(); es = null; }
+  clearTimeout(pollTimer);
+  version = 0;
   $('#join').hidden = false;
   $('#keeperEntry').hidden = false;
   $('#app').hidden = true;
@@ -183,19 +224,8 @@ function connect() {
   $('#join').hidden = true;
   $('#keeperEntry').hidden = true;
   $('#app').hidden = false;
-  if (es) es.close();
-  es = new EventSource('/api/events?id=' + encodeURIComponent(playerId));
-  es.onopen = () => { $('#dot').classList.add('live'); $('#connText').textContent = 'Live'; };
-  es.onerror = () => { $('#dot').classList.remove('live'); $('#connText').textContent = 'Reconnecting'; };
-  es.onmessage = e => {
-    const v = JSON.parse(e.data);
-    if (v.gone) {
-      store.set(null); playerId = null; showJoin();
-      $('#joinError').textContent = 'You were removed from the game. Join again to get a new ID.';
-      return;
-    }
-    render(v);
-  };
+  version = 0;
+  poll();
 }
 
 function render(v) {
