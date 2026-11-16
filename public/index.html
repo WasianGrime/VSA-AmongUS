@@ -14,7 +14,14 @@
 <body>
 <div class="wrap">
   <header class="brand hero" id="brand">
-    <img class="brand-logo" src="/logo.png" alt="Vietnamese Student Association at Indiana University logo" width="60" height="60">
+    <div class="logo-wrap">
+      <svg class="orbit" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="orbit-track" cx="100" cy="100" r="96" pathLength="100"/>
+        <circle class="orbit-arc" cx="100" cy="100" r="96" pathLength="100"/>
+        <circle class="orbit-dot" cx="100" cy="4" r="4.5"/>
+      </svg>
+      <img class="brand-logo" src="/logo.png" alt="Vietnamese Student Association at Indiana University logo" width="60" height="60">
+    </div>
     <div>
       <div class="eyebrow">VSA at IU</div>
       <h1 id="title">Among Us</h1>
@@ -430,6 +437,11 @@ function toast(msg) {
   document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
 }
 
+// Opening animation the first time the start screen appears.
+if (!playerId) {
+  document.body.classList.add('intro');
+  setTimeout(() => document.body.classList.remove('intro'), 3000);
+}
 playerId ? connect() : showJoin();
 </script>
 </body>

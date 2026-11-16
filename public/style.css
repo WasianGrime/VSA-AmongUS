@@ -316,3 +316,63 @@ tr.dead td { opacity: .5; }
   .overlay.alarm { background: #a51c25; }
   .overlay.alarm.body { background: #a87010; }
 }
+
+/* ---------- logo ring ---------- */
+.logo-wrap { position: relative; flex: none; display: grid; place-items: center; }
+.orbit {
+  position: absolute; inset: -11px; width: calc(100% + 22px); height: calc(100% + 22px);
+  overflow: visible; pointer-events: none;
+  animation: orbit-spin 14s linear infinite;
+}
+.brand.hero .orbit { inset: -26px; width: calc(100% + 52px); height: calc(100% + 52px); animation-duration: 18s; }
+.orbit circle { fill: none; }
+.orbit-track { stroke: color-mix(in srgb, var(--gold) 40%, transparent); stroke-width: 1; stroke-dasharray: 0.6 2.4; }
+.orbit-arc { stroke: var(--gold-2); stroke-width: 1.6; stroke-linecap: round; stroke-dasharray: 18 82; filter: drop-shadow(0 0 3px var(--gold)); }
+.orbit .orbit-dot { fill: var(--gold-2); filter: drop-shadow(0 0 4px var(--gold-2)); }
+@keyframes orbit-spin { to { transform: rotate(360deg); } }
+
+/* ---------- opening animation ---------- */
+.intro .brand.hero .logo-wrap { animation: medallion-in 1s cubic-bezier(.2,.9,.25,1.15) both; }
+.intro .brand.hero .orbit-track,
+.intro .brand.hero .orbit-arc { animation: ring-draw 1.4s .35s cubic-bezier(.6,0,.2,1) both; }
+.intro .brand.hero .orbit-dot { animation: fade-in .4s 1.2s both; }
+.intro .brand.hero .brand-logo { animation: glow-pulse 1.6s .5s ease-out both; }
+.intro .brand.hero .eyebrow:first-child { animation: rise .7s .45s cubic-bezier(.2,.8,.2,1) both; }
+.intro .brand.hero h1 {
+  background-size: 250% 100%;
+  background-image: linear-gradient(100deg, var(--gold) 0%, var(--gold-2) 40%, #fff7e0 50%, var(--gold-2) 60%, var(--gold) 100%);
+  animation: rise .8s .6s cubic-bezier(.2,.8,.2,1) both, shimmer 1.6s 1.3s ease-in-out both;
+}
+.intro .brand.hero .rule { animation: rise .7s .8s cubic-bezier(.2,.8,.2,1) both; }
+.intro .brand.hero .rule::before,
+.intro .brand.hero .rule::after { animation: pop .4s 1.25s both; }
+.intro .brand.hero ~ .panel:not([hidden]),
+.intro .brand.hero ~ #loginForm,
+.intro .brand.hero ~ .back-link { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+.intro .brand.hero ~ #keeperEntry, .intro .brand.hero ~ #loginForm { animation-delay: 1s; }
+.intro .brand.hero ~ #join, .intro .brand.hero ~ .back-link { animation-delay: 1.15s; }
+
+@keyframes medallion-in {
+  from { opacity: 0; transform: scale(.55) rotate(-25deg); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ring-draw {
+  from { stroke-dashoffset: 100; opacity: 0; }
+  20% { opacity: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes glow-pulse {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(1.12) drop-shadow(0 0 22px color-mix(in srgb, var(--gold-2) 70%, transparent)); }
+  100% { filter: brightness(1); }
+}
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit { animation: none; }
+}
+.brand.hero .logo-wrap { margin: 22px 0 26px; }
+.brand.hero .brand-logo { margin-bottom: 0; }

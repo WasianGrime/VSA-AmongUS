@@ -16,7 +16,14 @@
 <!-- LOGIN -->
 <div class="wrap" id="loginView" hidden>
   <header class="brand hero">
-    <img class="brand-logo" src="/logo.png" alt="Vietnamese Student Association at Indiana University logo" width="60" height="60">
+    <div class="logo-wrap">
+      <svg class="orbit" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="orbit-track" cx="100" cy="100" r="96" pathLength="100"/>
+        <circle class="orbit-arc" cx="100" cy="100" r="96" pathLength="100"/>
+        <circle class="orbit-dot" cx="100" cy="4" r="4.5"/>
+      </svg>
+      <img class="brand-logo" src="/logo.png" alt="Vietnamese Student Association at Indiana University logo" width="60" height="60">
+    </div>
     <div>
       <div class="eyebrow">VSA at IU · Among Us</div>
       <h1>Keeper Console</h1>
@@ -36,7 +43,14 @@
 <div class="wrap wide" id="dash" hidden>
   <header class="row" style="justify-content:space-between">
     <div class="brand">
+      <div class="logo-wrap">
+      <svg class="orbit" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="orbit-track" cx="100" cy="100" r="96" pathLength="100"/>
+        <circle class="orbit-arc" cx="100" cy="100" r="96" pathLength="100"/>
+        <circle class="orbit-dot" cx="100" cy="4" r="4.5"/>
+      </svg>
       <img class="brand-logo" src="/logo.png" alt="Vietnamese Student Association at Indiana University logo" width="60" height="60">
+    </div>
       <div>
         <div class="eyebrow">VSA at IU · Keeper Console</div>
         <h1 id="statusTitle">Lobby</h1>
@@ -358,6 +372,10 @@ $('#addTask').onsubmit = async e => {
 $('#resetTasks').onclick = () => ask('Replace the task list with the default tasks?', 'Restore', () => act('resetTasks'));
 $('#clearPlayers').onclick = () => ask('Remove every player? They will need to join again with new IDs.', 'Remove everyone', () => act('clearPlayers'));
 
+if (!token) {
+  document.body.classList.add('intro');
+  setTimeout(() => document.body.classList.remove('intro'), 3000);
+}
 token ? open() : lock();
 </script>
 </body>
