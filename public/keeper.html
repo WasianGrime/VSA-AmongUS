@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keeper Console</title>
+<meta name="theme-color" content="#0a1120">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="wrap" id="loginView" hidden>
+  <header class="brand">
+    <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="18" fill="#18243c" stroke="#26344f" stroke-width="2"/>
+      <rect x="13" y="18" width="14" height="11" rx="2" fill="#ffc24b"/>
+      <path d="M15 18v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#ffc24b" stroke-width="2.5"/>
+    </svg>
+    <div>
+      <div class="eyebrow">VSA Among Us</div>
+      <h1>Keeper Console</h1>
+    </div>
+  </header>
+  <form class="panel" id="loginForm">
+    <label for="passcode">Keeper passcode
+      <input id="passcode" type="password" inputmode="numeric" autocomplete="current-password" maxlength="12" placeholder="••••••" required>
+    </label>
+    <button type="submit">Unlock</button>
+    <div class="error" id="loginError"></div>
+  </form>
+  <p class="muted small" style="text-align:center">Players don't need this page. They join from the main address.</p>
+</div>
+
+<!-- DASHBOARD -->
+<div class="wrap wide" id="dash" hidden>
+  <header class="row" style="justify-content:space-between">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="18" fill="#18243c" stroke="#26344f" stroke-width="2"/>
+        <rect x="9" y="13" width="22" height="12" rx="6" fill="#7fd6ff"/>
+        <rect x="12" y="15" width="8" height="3" rx="1.5" fill="#e8eefb" opacity=".8"/>
+      </svg>
+      <div>
+        <div class="eyebrow">Keeper Console</div>
+        <h1 id="statusTitle">Lobby</h1>
+      </div>
+    </div>
+    <div class="row">
+      <span class="muted small"><span class="status-dot" id="dot"></span> <span id="connText">Connecting</span></span>
+      <button class="ghost sm" id="logout">Lock</button>
+    </div>
+  </header>
+
+  <div class="keeper-grid">
+    <div class="col">
+      <!-- controls -->
+      <section class="panel">
+        <div class="row" id="controls"></div>
+        <div class="error" id="actionError"></div>
+      </section>
+
+      <!-- progress -->
+      <section class="panel progress">
+        <div class="progress-head">
+          <h2>Crew task progress</h2>
+          <strong id="progPct">0%</strong>
+        </div>
+        <div class="bar"><span id="progBar"></span></div>
+        <div class="row small muted" style="justify-content:space-between">
+          <span id="progText">Starts when the game begins</span>
+          <span id="aliveText"></span>
+        </div>
+      </section>
+
+      <!-- players -->
+      <section class="panel">
+        <div class="row" style="justify-content:space-between">
+          <h2>Players <span class="muted" id="playerCount"></span></h2>
+          <button class="ghost sm" id="clearPlayers">Remove everyone</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Tasks</th><th>Status</th><th></th></tr></thead>
+            <tbody id="players"></tbody>
+          </table>
+        </div>
+        <p class="muted small" id="emptyPlayers">No one has joined yet. Have players open the address on the right.</p>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <h3>Players join at</h3>
+        <div class="urls" id="urls"></div>
+        <p class="muted small">Everyone must be on the same Wi-Fi as this computer.</p>
+      </section>
+
+      <section class="panel">
+        <h3>Game settings</h3>
+        <form id="settingsForm" class="row">
+          <label class="grow" for="impostors">Impostors
+            <input id="impostors" type="number" min="1" max="10">
+          </label>
+          <label class="grow" for="perPlayer">Tasks per player
+            <input id="perPlayer" type="number" min="1" max="20">
+          </label>
+        </form>
+        <p class="muted small">Changes apply when you start the next game.</p>
+      </section>
+
+      <section class="panel">
+        <div class="row" style="justify-content:space-between">
+          <h3>Task list <span class="muted" id="poolCount"></span></h3>
+          <button class="ghost sm" id="resetTasks">Restore defaults</button>
+        </div>
+        <ul class="pool" id="pool"></ul>
+        <form id="addTask" class="col" style="gap:8px">
+          <input id="taskName" type="text" maxlength="24" placeholder="Task, e.g. Fix the wiring">
+          <div class="row">
+            <input id="taskLoc" class="grow" type="text" maxlength="24" placeholder="Location, e.g. Kitchen">
+            <button type="submit" class="sm">Add</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- confirm dialog (built in-page) -->
+<div class="overlay" id="confirm" hidden>
+  <div class="panel">
+    <h2 id="confirmText"></h2>
+    <div class="row" style="justify-content:center">
+      <button class="ghost" id="confirmNo">Cancel</button>
+      <button class="danger" id="confirmYes">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const tokenStore = {
+  get() { try { return sessionStorage.getItem('vsa-keeper'); } catch { return null; } },
+  set(v) { try { v ? sessionStorage.setItem('vsa-keeper', v) : sessionStorage.removeItem('vsa-keeper'); } catch {} },
+};
+let token = tokenStore.get();
+let es = null;
+let S = null;
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  Object.assign(e, props);
+  for (const k of kids) e.append(k);
+  return e;
+}
+
+async function act(action, extra = {}) {
+  $('#actionError').textContent = '';
+  try {
+    const r = await fetch('/api/keeper/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-keeper-token': token },
+      body: JSON.stringify({ action, ...extra }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 401) return lock();
+    if (!r.ok) throw new Error(d.error || 'Something went wrong');
+  } catch (e) { $('#actionError').textContent = e.message; }
+}
+
+function ask(text, label, onYes) {
+  $('#confirmText').textContent = text;
+  $('#confirmYes').textContent = label;
+  $('#confirm').hidden = false;
+  $('#confirmYes').onclick = () => { $('#confirm').hidden = true; onYes(); };
+}
+$('#confirmNo').onclick = () => { $('#confirm').hidden = true; };
+
+function lock() {
+  if (es) { es.close(); es = null; }
+  token = null; tokenStore.set(null);
+  $('#dash').hidden = true; $('#loginView').hidden = false;
+  $('#passcode').value = '';
+}
+
+$('#loginForm').onsubmit = async e => {
+  e.preventDefault();
+  $('#loginError').textContent = '';
+  const r = await fetch('/api/keeper/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ passcode: $('#passcode').value }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { $('#loginError').textContent = 'That passcode is wrong. Try again.'; $('#passcode').select(); return; }
+  token = d.token; tokenStore.set(token); open();
+};
+$('#logout').onclick = lock;
+
+function open() {
+  $('#loginView').hidden = true; $('#dash').hidden = false;
+  if (es) es.close();
+  es = new EventSource('/api/keeper/events?token=' + encodeURIComponent(token));
+  es.onopen = () => { $('#dot').classList.add('live'); $('#connText').textContent = 'Live'; };
+  es.onerror = async () => {
+    $('#dot').classList.remove('live'); $('#connText').textContent = 'Reconnecting';
+    // If the server restarted, the token is gone: check and lock if so.
+    const r = await fetch('/api/keeper/action', { method: 'POST', headers: { 'x-keeper-token': token }, body: '{}' }).catch(() => null);
+    if (r && r.status === 401) lock();
+  };
+  es.onmessage = e => render(JSON.parse(e.data));
+}
+
+function render(s) {
+  S = s;
+  const g = s.game;
+  const titles = { lobby: 'Lobby', playing: g.meeting ? 'Meeting in progress' : 'Game in progress', ended: g.winner === 'crew' ? 'Crewmates won' : 'Impostors won' };
+  $('#statusTitle').textContent = titles[g.status];
+
+  // controls
+  const c = $('#controls'); c.innerHTML = '';
+  if (g.status === 'lobby') {
+    c.append(el('button', { className: 'go', textContent: 'Start game', onclick: () => act('start') }));
+    c.append(el('span', { className: 'muted small', textContent: s.players.length + ' players · ' + s.settings.impostors + ' impostor' + (s.settings.impostors > 1 ? 's' : '') + ' · ' + s.settings.tasksPerPlayer + ' tasks each' }));
+  } else if (g.status === 'playing') {
+    c.append(g.meeting
+      ? el('button', { className: 'warn', textContent: 'End meeting', onclick: () => act('meeting', { on: false }) })
+      : el('button', { className: 'warn', textContent: 'Call emergency meeting', onclick: () => act('meeting', { on: true }) }));
+    c.append(el('button', { className: 'ghost', textContent: 'Crew wins', onclick: () => ask('End the game with a crewmate win?', 'Crew wins', () => act('end', { winner: 'crew' })) }));
+    c.append(el('button', { className: 'ghost', textContent: 'Impostors win', onclick: () => ask('End the game with an impostor win?', 'Impostors win', () => act('end', { winner: 'impostors' })) }));
+    c.append(el('button', { className: 'ghost', textContent: 'Cancel round', onclick: () => ask('Cancel this round and go back to the lobby? Roles and tasks are cleared.', 'Back to lobby', () => act('lobby')) }));
+  } else {
+    c.append(el('span', { className: 'chip ' + (g.winner === 'crew' ? 'crew' : 'imp'), textContent: g.reason || 'Game over' }));
+    c.append(el('button', { className: 'go', textContent: 'Play again', onclick: () => act('start') }));
+    c.append(el('button', { className: 'ghost', textContent: 'Back to lobby', onclick: () => act('lobby') }));
+  }
+
+  // progress
+  $('#progPct').textContent = g.progress.pct + '%';
+  $('#progBar').style.width = g.progress.pct + '%';
+  $('#progText').textContent = g.status === 'lobby' ? 'Starts when the game begins' : g.progress.done + ' of ' + g.progress.total + ' crew tasks done';
+  const inGame = s.players.filter(p => p.role);
+  const aliveCrew = inGame.filter(p => p.role === 'crewmate' && p.alive).length;
+  const aliveImp = inGame.filter(p => p.role === 'impostor' && p.alive).length;
+  $('#aliveText').textContent = g.status === 'lobby' ? '' : aliveCrew + ' crew alive · ' + aliveImp + ' impostor' + (aliveImp === 1 ? '' : 's') + ' alive';
+
+  // players
+  $('#playerCount').textContent = '(' + s.players.length + ')';
+  $('#emptyPlayers').hidden = s.players.length > 0;
+  const tb = $('#players'); tb.innerHTML = '';
+  for (const p of s.players) {
+    const tr = el('tr', { className: g.status !== 'lobby' && p.role && !p.alive ? 'dead' : '' });
+    tr.append(el('td', { className: 'id', textContent: p.id }));
+
+    const name = el('input', { type: 'text', value: p.name || '', placeholder: 'No name', maxLength: 24, id: 'n' + p.id });
+    name.style.padding = '7px 10px'; name.style.fontSize = '14px';
+    name.onchange = () => act('rename', { playerId: p.id, name: name.value });
+    tr.append(el('td', {}, name));
+
+    // role
+    const roleTd = el('td');
+    if (g.status === 'lobby') {
+      const lbl = el('label', { className: 'row small', style: 'flex-direction:row;gap:6px;cursor:pointer' });
+      const cb = el('input', { type: 'checkbox', checked: !!p.forceImpostor });
+      cb.onchange = () => act('forceImpostor', { playerId: p.id, value: cb.checked });
+      lbl.append(cb, 'Make impostor');
+      roleTd.append(lbl);
+    } else if (p.role) {
+      roleTd.append(el('span', { className: 'chip ' + (p.role === 'impostor' ? 'imp' : 'crew'), textContent: p.role }));
+    } else {
+      roleTd.append(el('span', { className: 'chip', textContent: 'Watching' }));
+    }
+    tr.append(roleTd);
+
+    // tasks
+    const tasksTd = el('td');
+    if (p.tasks && p.tasks.length) {
+      const d = p.tasks.filter(t => t.done).length;
+      const bar = el('div', { className: 'mini-bar' + (p.role === 'impostor' ? ' imp' : '') }, el('span'));
+      bar.firstChild.style.width = Math.round(d / p.tasks.length * 100) + '%';
+      const wrap = el('div', { className: 'row', style: 'gap:8px;flex-wrap:nowrap' }, bar, el('span', { className: 'small muted', textContent: d + '/' + p.tasks.length + (p.role === 'impostor' ? ' fake' : '') }));
+      wrap.title = p.tasks.map(t => (t.done ? '✓ ' : '○ ') + t.name + (t.location ? ' (' + t.location + ')' : '')).join('\n');
+      tasksTd.append(wrap);
+    } else tasksTd.append(el('span', { className: 'muted small', textContent: '—' }));
+    tr.append(tasksTd);
+
+    // status
+    const stTd = el('td');
+    if (g.status === 'playing' && p.role) {
+      stTd.append(p.alive
+        ? el('button', { className: 'ghost sm', textContent: 'Mark out', onclick: () => act('alive', { playerId: p.id, alive: false }) })
+        : el('button', { className: 'ghost sm', textContent: 'Bring back', onclick: () => act('alive', { playerId: p.id, alive: true }) }));
+    } else if (p.role && !p.alive) {
+      stTd.append(el('span', { className: 'chip dead', textContent: 'Out' }));
+    } else {
+      stTd.append(el('span', { className: 'muted small', textContent: g.status === 'lobby' ? 'Ready' : 'Alive' }));
+    }
+    tr.append(stTd);
+
+    tr.append(el('td', {}, el('button', { className: 'ghost sm', textContent: 'Remove', onclick: () => ask('Remove ' + (p.name || 'player ' + p.id) + ' from the game?', 'Remove', () => act('kick', { playerId: p.id })) })));
+    tb.append(tr);
+  }
+
+  // urls
+  $('#urls').innerHTML = '';
+  const urls = s.joinUrls.length ? s.joinUrls : [location.origin];
+  urls.forEach(u => $('#urls').append(el('div', { textContent: u })));
+
+  // settings (don't clobber while typing)
+  if (document.activeElement !== $('#impostors')) $('#impostors').value = s.settings.impostors;
+  if (document.activeElement !== $('#perPlayer')) $('#perPlayer').value = s.settings.tasksPerPlayer;
+
+  // pool
+  $('#poolCount').textContent = '(' + s.taskPool.length + ')';
+  const pool = $('#pool'); pool.innerHTML = '';
+  for (const t of s.taskPool) {
+    const info = el('div', {}, el('div', { textContent: t.name, style: 'font-weight:600' }), el('div', { className: 'small muted', textContent: t.location || 'Anywhere' }));
+    pool.append(el('li', {}, info, el('button', { className: 'x', textContent: '×', title: 'Remove task', ariaLabel: 'Remove ' + t.name, onclick: () => act('removeTask', { taskId: t.id }) })));
+  }
+}
+
+const saveSettings = () => act('settings', { impostors: $('#impostors').value, tasksPerPlayer: $('#perPlayer').value });
+$('#impostors').onchange = saveSettings;
+$('#perPlayer').onchange = saveSettings;
+$('#settingsForm').onsubmit = e => { e.preventDefault(); saveSettings(); };
+
+$('#addTask').onsubmit = async e => {
+  e.preventDefault();
+  await act('addTask', { name: $('#taskName').value, location: $('#taskLoc').value });
+  if (!$('#actionError').textContent) { $('#taskName').value = ''; $('#taskLoc').value = ''; $('#taskName').focus(); }
+};
+$('#resetTasks').onclick = () => ask('Replace the task list with the default tasks?', 'Restore', () => act('resetTasks'));
+$('#clearPlayers').onclick = () => ask('Remove every player? They will need to join again with new IDs.', 'Remove everyone', () => act('clearPlayers'));
+
+token ? open() : lock();
+</script>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VSA Among Us</title>
+<meta name="theme-color" content="#0a1120">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600;700&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="18" fill="#18243c" stroke="#26344f" stroke-width="2"/>
+      <rect x="9" y="13" width="22" height="12" rx="6" fill="#7fd6ff"/>
+      <rect x="12" y="15" width="8" height="3" rx="1.5" fill="#e8eefb" opacity=".8"/>
+    </svg>
+    <div>
+      <div class="eyebrow">VSA Among Us</div>
+      <h1 id="title">Join the crew</h1>
+    </div>
+  </header>
+
+  <!-- JOIN -->
+  <section id="join" class="panel" hidden>
+    <form id="joinForm" class="col" style="gap:12px">
+      <label for="joinName">Your name
+        <input id="joinName" type="text" maxlength="24" autocomplete="nickname" placeholder="e.g. Jordan" required>
+      </label>
+      <button type="submit">Join game</button>
+    </form>
+    <div class="error" id="joinError"></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:0;width:100%">
+    <form id="rejoinForm" class="col" style="gap:12px">
+      <label for="rejoinId">Already joined? Enter your player ID
+        <input id="rejoinId" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4-digit ID">
+      </label>
+      <button type="submit" class="ghost">Rejoin</button>
+    </form>
+  </section>
+
+  <!-- CONNECTED -->
+  <section id="app" class="col" hidden>
+    <div class="panel idcard">
+      <div>
+        <div class="eyebrow">Player ID</div>
+        <div class="idnum" id="myId">----</div>
+      </div>
+      <form id="nameForm" class="col" style="gap:8px">
+        <label for="myName">Display name
+          <input id="myName" type="text" maxlength="24" placeholder="Add your name">
+        </label>
+      </form>
+    </div>
+
+    <!-- progress (visible to everyone during a game) -->
+    <div class="panel progress" id="progressPanel" hidden>
+      <div class="progress-head">
+        <h3>Crew task progress</h3>
+        <strong id="progPct">0%</strong>
+      </div>
+      <div class="bar"><span id="progBar"></span></div>
+      <p class="muted small" id="progText"></p>
+    </div>
+
+    <!-- lobby -->
+    <div class="panel" id="lobby" hidden>
+      <div class="row" style="justify-content:space-between">
+        <h2>Waiting for the Keeper</h2>
+        <span class="chip amber">Lobby</span>
+      </div>
+      <p class="muted">Remember your ID so you can get back in. When the Keeper starts the game, your role and tasks show up here.</p>
+    </div>
+
+    <!-- spectator (joined mid-game) -->
+    <div class="panel" id="spectator" hidden>
+      <h2>Game in progress</h2>
+      <p class="muted">You joined after this round started. You'll get a role and tasks next round.</p>
+    </div>
+
+    <!-- role -->
+    <div class="panel role-card" id="roleCard" hidden>
+      <div class="eyebrow">Your role</div>
+      <div class="role-hold" id="roleHold" tabindex="0">Press and hold to see your role</div>
+      <div id="roleReveal" hidden>
+        <div class="role-name" id="roleName"></div>
+        <p class="muted small" id="roleHint" style="margin-top:8px"></p>
+      </div>
+      <span class="chip dead" id="deadChip" hidden>You're out. Keep doing tasks as a ghost.</span>
+    </div>
+
+    <!-- tasks -->
+    <div class="panel" id="taskPanel" hidden>
+      <div class="row" style="justify-content:space-between">
+        <h2>Your tasks</h2>
+        <span class="muted small" id="taskCount"></span>
+      </div>
+      <ul class="tasks" id="taskList"></ul>
+      <p class="muted small">Tap a task once you've done it in real life.</p>
+    </div>
+
+    <!-- roster -->
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h3>Players</h3>
+        <span class="muted small"><span class="status-dot" id="dot"></span> <span id="connText">Connecting</span></span>
+      </div>
+      <div class="roster" id="roster"></div>
+    </div>
+
+    <button class="ghost" id="leaveBtn">Not you? Switch player</button>
+  </section>
+</div>
+
+<!-- overlays -->
+<div class="overlay meeting" id="meeting" hidden>
+  <div class="panel">
+    <div class="eyebrow" style="color:var(--amber)">Everyone to the table</div>
+    <div class="big" style="color:var(--amber)">Emergency meeting</div>
+    <p id="meetingReason" class="muted"></p>
+  </div>
+</div>
+
+<div class="overlay" id="gameOver" hidden>
+  <div class="panel">
+    <div class="eyebrow">Game over</div>
+    <div class="big" id="winText"></div>
+    <p class="muted" id="winReason"></p>
+    <div id="impReveal" class="col" style="gap:8px;align-items:center"></div>
+    <p class="muted small">Waiting for the Keeper to start the next round.</p>
+    <button class="ghost sm" id="closeOver">See my screen</button>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const store = {
+  get() { try { return localStorage.getItem('vsa-player-id'); } catch { return null; } },
+  set(v) { try { v ? localStorage.setItem('vsa-player-id', v) : localStorage.removeItem('vsa-player-id'); } catch {} },
+};
+
+let playerId = store.get();
+let es = null;
+let last = null;
+let overDismissedAt = null;
+
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || 'Something went wrong');
+  return data;
+}
+
+function showJoin() {
+  if (es) { es.close(); es = null; }
+  $('#join').hidden = false;
+  $('#app').hidden = true;
+  $('#meeting').hidden = true;
+  $('#gameOver').hidden = true;
+  $('#title').textContent = 'Join the crew';
+}
+
+function connect() {
+  $('#join').hidden = true;
+  $('#app').hidden = false;
+  if (es) es.close();
+  es = new EventSource('/api/events?id=' + encodeURIComponent(playerId));
+  es.onopen = () => { $('#dot').classList.add('live'); $('#connText').textContent = 'Live'; };
+  es.onerror = () => { $('#dot').classList.remove('live'); $('#connText').textContent = 'Reconnecting'; };
+  es.onmessage = e => {
+    const v = JSON.parse(e.data);
+    if (v.gone) {
+      store.set(null); playerId = null; showJoin();
+      $('#joinError').textContent = 'You were removed from the game. Join again to get a new ID.';
+      return;
+    }
+    render(v);
+  };
+}
+
+function render(v) {
+  last = v;
+  const { me, game } = v;
+  $('#myId').textContent = me.id;
+  if (document.activeElement !== $('#myName')) $('#myName').value = me.name || '';
+  $('#title').textContent = me.name ? 'Hi, ' + me.name : 'Welcome aboard';
+
+  const playing = game.status === 'playing';
+  const inRound = playing && !!me.role;
+
+  // progress
+  $('#progressPanel').hidden = game.status === 'lobby';
+  $('#progPct').textContent = game.progress.pct + '%';
+  $('#progBar').style.width = game.progress.pct + '%';
+  $('#progText').textContent = game.progress.done + ' of ' + game.progress.total + ' crew tasks done';
+
+  $('#lobby').hidden = game.status !== 'lobby';
+  $('#spectator').hidden = !(playing && !me.role);
+
+  // role
+  $('#roleCard').hidden = !inRound;
+  if (inRound) {
+    const imp = me.role === 'impostor';
+    $('#roleName').textContent = imp ? 'Impostor' : 'Crewmate';
+    $('#roleName').className = 'role-name ' + (imp ? 'imp' : 'crew');
+    $('#roleHint').textContent = imp
+      ? (v.teammates && v.teammates.length ? 'Your fellow impostors: ' + v.teammates.join(', ') + '. ' : '') +
+        'Your tasks are fake. Pretend to do them.'
+      : 'Finish your tasks and find the impostor.';
+    $('#deadChip').hidden = me.alive;
+  }
+
+  // tasks
+  $('#taskPanel').hidden = !inRound;
+  if (inRound) {
+    const list = $('#taskList');
+    list.innerHTML = '';
+    for (const t of me.tasks) {
+      const li = document.createElement('li');
+      li.className = 'task' + (t.done ? ' done' : '');
+      li.tabIndex = 0;
+      li.setAttribute('role', 'checkbox');
+      li.setAttribute('aria-checked', t.done);
+      li.innerHTML = '<span class="box"></span><div><div class="tname"></div><div class="tloc"></div></div>';
+      li.querySelector('.tname').textContent = t.name;
+      li.querySelector('.tloc').textContent = t.location || '';
+      const toggle = () => post('/api/task', { id: playerId, taskId: t.id, done: !t.done }).catch(err => toast(err.message));
+      li.onclick = toggle;
+      li.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } };
+      list.appendChild(li);
+    }
+    const d = me.tasks.filter(t => t.done).length;
+    $('#taskCount').textContent = d + ' / ' + me.tasks.length + ' done';
+  }
+
+  // roster
+  const roster = $('#roster');
+  roster.innerHTML = '';
+  for (const p of v.roster) {
+    const c = document.createElement('span');
+    c.className = 'chip' + (p.isMe ? ' me' : '') + (p.alive ? '' : ' dead') +
+      (p.role === 'impostor' ? ' imp' : '');
+    c.textContent = p.name + (p.isMe ? ' (you)' : '');
+    roster.appendChild(c);
+  }
+
+  // meeting
+  $('#meeting').hidden = !(playing && game.meeting);
+  if (game.meeting) $('#meetingReason').textContent = game.meeting.reason;
+
+  // game over
+  const ended = game.status === 'ended';
+  $('#gameOver').hidden = !ended || overDismissedAt === game.endedAt;
+  if (ended) {
+    const crewWon = game.winner === 'crew';
+    $('#winText').textContent = crewWon ? 'Crewmates win' : 'Impostors win';
+    $('#winText').style.color = crewWon ? 'var(--crew)' : 'var(--imp)';
+    $('#winReason').textContent = game.reason || '';
+    const imps = v.roster.filter(p => p.role === 'impostor').map(p => p.name);
+    $('#impReveal').innerHTML = '';
+    if (imps.length) {
+      const lbl = document.createElement('div'); lbl.className = 'eyebrow'; lbl.textContent = 'The impostors were';
+      const row = document.createElement('div'); row.className = 'roster'; row.style.justifyContent = 'center';
+      imps.forEach(n => { const c = document.createElement('span'); c.className = 'chip imp'; c.textContent = n; row.appendChild(c); });
+      $('#impReveal').append(lbl, row);
+    }
+  }
+}
+
+// hold to reveal role, so people nearby can't peek
+const hold = $('#roleHold');
+const reveal = on => { $('#roleReveal').hidden = !on; hold.hidden = on; };
+hold.addEventListener('pointerdown', e => { e.preventDefault(); reveal(true); });
+window.addEventListener('pointerup', () => reveal(false));
+window.addEventListener('pointercancel', () => reveal(false));
+hold.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); reveal(true); } });
+window.addEventListener('keyup', () => reveal(false));
+hold.addEventListener('contextmenu', e => e.preventDefault());
+
+$('#closeOver').onclick = () => { overDismissedAt = last && last.game.endedAt; $('#gameOver').hidden = true; };
+
+$('#joinForm').onsubmit = async e => {
+  e.preventDefault();
+  $('#joinError').textContent = '';
+  try {
+    const { id } = await post('/api/join', { name: $('#joinName').value });
+    playerId = id; store.set(id); connect();
+  } catch (err) { $('#joinError').textContent = err.message; }
+};
+
+$('#rejoinForm').onsubmit = async e => {
+  e.preventDefault();
+  $('#joinError').textContent = '';
+  try {
+    const { id } = await post('/api/rejoin', { id: $('#rejoinId').value });
+    playerId = id; store.set(id); connect();
+  } catch (err) { $('#joinError').textContent = err.message; }
+};
+
+let nameTimer;
+const saveName = () => post('/api/name', { id: playerId, name: $('#myName').value }).catch(err => toast(err.message));
+$('#myName').addEventListener('input', () => { clearTimeout(nameTimer); nameTimer = setTimeout(saveName, 600); });
+$('#nameForm').onsubmit = e => { e.preventDefault(); clearTimeout(nameTimer); saveName(); $('#myName').blur(); };
+
+$('#leaveBtn').onclick = () => { store.set(null); playerId = null; showJoin(); };
+
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
+}
+
+playerId ? connect() : showJoin();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "vsa-amongus",
+  "version": "1.0.0",
+  "description": "Keeper-run tracker for an in-person Among Us style game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
