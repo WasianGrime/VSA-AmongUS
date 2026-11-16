@@ -208,3 +208,18 @@ tr.dead td { opacity: .55; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* Keeper entry on the start screen */
+.keeper-entry {
+  flex-direction: row; align-items: center; gap: 14px;
+  text-decoration: none; color: var(--text);
+  border-color: color-mix(in srgb, var(--amber) 55%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--amber) 12%, var(--panel)), var(--panel));
+  transition: transform .08s ease, border-color .15s ease;
+}
+.keeper-entry:hover { border-color: var(--amber); }
+.keeper-entry:active { transform: translateY(1px); }
+.keeper-entry:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.keeper-entry .arrow { font: 700 22px var(--display); color: var(--amber); }
+.back-link { color: var(--visor); text-align: center; font-size: 14px; text-decoration: none; }
+.back-link:hover { text-decoration: underline; }

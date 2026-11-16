@@ -23,8 +23,24 @@
     </div>
   </header>
 
+  <!-- KEEPER ENTRY -->
+  <a href="/keeper" id="keeperEntry" class="panel keeper-entry" hidden>
+    <svg width="36" height="36" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="18" fill="#0a1120" stroke="#ffc24b" stroke-width="2"/>
+      <rect x="13" y="18" width="14" height="11" rx="2" fill="#ffc24b"/>
+      <path d="M15 18v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#ffc24b" stroke-width="2.5"/>
+    </svg>
+    <div class="grow">
+      <div class="eyebrow" style="color:var(--amber)">Running the game?</div>
+      <h2>I'm the Keeper</h2>
+      <p class="muted small">Unlock the Keeper Console with your passcode</p>
+    </div>
+    <span class="arrow" aria-hidden="true">→</span>
+  </a>
+
   <!-- JOIN -->
   <section id="join" class="panel" hidden>
+    <div class="eyebrow">Playing?</div>
     <form id="joinForm" class="col" style="gap:12px">
       <label for="joinName">Your name
         <input id="joinName" type="text" maxlength="24" autocomplete="nickname" placeholder="e.g. Jordan" required>
@@ -156,6 +172,7 @@ async function post(url, body) {
 function showJoin() {
   if (es) { es.close(); es = null; }
   $('#join').hidden = false;
+  $('#keeperEntry').hidden = false;
   $('#app').hidden = true;
   $('#meeting').hidden = true;
   $('#gameOver').hidden = true;
@@ -164,6 +181,7 @@ function showJoin() {
 
 function connect() {
   $('#join').hidden = true;
+  $('#keeperEntry').hidden = true;
   $('#app').hidden = false;
   if (es) es.close();
   es = new EventSource('/api/events?id=' + encodeURIComponent(playerId));

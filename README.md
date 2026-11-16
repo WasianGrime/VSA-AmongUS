@@ -34,7 +34,7 @@ The terminal prints the addresses to use, for example:
 ```
 
 1. Players open `http://<that address>` on their phones. They must be on the **same Wi-Fi** as the laptop.
-2. The Keeper opens `http://<that address>/keeper` and enters the passcode.
+2. The Keeper opens the same address, taps **I'm the Keeper** at the top of the start screen, and enters the passcode. (Going straight to `/keeper` also works.)
 
 ### Options
 
