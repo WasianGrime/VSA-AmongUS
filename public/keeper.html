@@ -83,7 +83,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Tasks</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Role</th><th>Tasks</th><th>Alive / dead</th><th></th></tr></thead>
             <tbody id="players"></tbody>
           </table>
         </div>
@@ -241,9 +241,18 @@ function render(s) {
     c.append(el('button', { className: 'go', textContent: 'Start game', onclick: () => act('start') }));
     c.append(el('span', { className: 'muted small', textContent: s.players.length + ' players · ' + s.settings.impostors + ' impostor' + (s.settings.impostors > 1 ? 's' : '') + ' · ' + s.settings.tasksPerPlayer + ' tasks each' }));
   } else if (g.status === 'playing') {
-    c.append(g.meeting
-      ? el('button', { className: 'warn', textContent: 'End meeting', onclick: () => act('meeting', { on: false }) })
-      : el('button', { className: 'warn', textContent: 'Call emergency meeting', onclick: () => act('meeting', { on: true }) }));
+    if (g.meeting) {
+      const since = Math.max(0, Math.round((Date.now() - g.meeting.at) / 1000));
+      c.append(el('div', { className: 'alarm-banner' },
+        el('span', { className: 'alarm-dot' }),
+        el('div', {}, el('strong', { textContent: g.meeting.reason }), el('div', { className: 'small', textContent: 'Every phone is ringing. Started ' + (since < 60 ? 'just now' : Math.round(since / 60) + ' min ago') + '.' })),
+        el('button', { className: 'go', textContent: 'End meeting', onclick: () => act('meeting', { on: false }) })));
+    } else {
+      c.append(el('button', { className: 'alarm-btn', onclick: () => act('meeting', { on: true, kind: 'emergency' }) },
+        el('strong', { textContent: 'Emergency meeting' }), el('span', { textContent: 'Call everyone back' })));
+      c.append(el('button', { className: 'alarm-btn body', onclick: () => act('meeting', { on: true, kind: 'body' }) },
+        el('strong', { textContent: 'Body reported' }), el('span', { textContent: 'Someone found a body' })));
+    }
     c.append(el('button', { className: 'ghost', textContent: 'Crew wins', onclick: () => ask('End the game with a crewmate win?', 'Crew wins', () => act('end', { winner: 'crew' })) }));
     c.append(el('button', { className: 'ghost', textContent: 'Impostors win', onclick: () => ask('End the game with an impostor win?', 'Impostors win', () => act('end', { winner: 'impostors' })) }));
     c.append(el('button', { className: 'ghost', textContent: 'Cancel round', onclick: () => ask('Cancel this round and go back to the lobby? Roles and tasks are cleared.', 'Back to lobby', () => act('lobby')) }));
@@ -306,10 +315,12 @@ function render(s) {
     const stTd = el('td');
     if (g.status === 'playing' && p.role) {
       stTd.append(p.alive
-        ? el('button', { className: 'ghost sm', textContent: 'Mark out', onclick: () => act('alive', { playerId: p.id, alive: false }) })
-        : el('button', { className: 'ghost sm', textContent: 'Bring back', onclick: () => act('alive', { playerId: p.id, alive: true }) }));
+        ? el('button', { className: 'danger sm', textContent: 'Mark dead', onclick: () => act('alive', { playerId: p.id, alive: false }) })
+        : el('div', { className: 'row', style: 'gap:6px;flex-wrap:nowrap' },
+            el('span', { className: 'chip dead-tag', textContent: 'Dead' }),
+            el('button', { className: 'ghost sm', textContent: 'Undo', onclick: () => act('alive', { playerId: p.id, alive: true }) })));
     } else if (p.role && !p.alive) {
-      stTd.append(el('span', { className: 'chip dead', textContent: 'Out' }));
+      stTd.append(el('span', { className: 'chip dead-tag', textContent: 'Dead' }));
     } else {
       stTd.append(el('span', { className: 'muted small', textContent: g.status === 'lobby' ? 'Ready' : 'Alive' }));
     }

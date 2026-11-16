@@ -223,3 +223,53 @@ tr.dead td { opacity: .55; }
 .keeper-entry .arrow { font: 700 22px var(--display); color: var(--amber); }
 .back-link { color: var(--visor); text-align: center; font-size: 14px; text-decoration: none; }
 .back-link:hover { text-decoration: underline; }
+
+/* ---------- alarms ---------- */
+.alarm-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  background: var(--imp); color: #fff; padding: 14px 20px; border-radius: 12px;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--imp) 50%, transparent);
+}
+.alarm-btn strong { font: 700 18px var(--display); letter-spacing: .04em; text-transform: uppercase; }
+.alarm-btn span { font: 500 12px var(--body); opacity: .85; letter-spacing: 0; }
+.alarm-btn.body { background: var(--amber); color: var(--hull); }
+.alarm-btn:hover { box-shadow: 0 0 0 5px color-mix(in srgb, var(--imp) 30%, transparent); }
+.alarm-btn.body:hover { box-shadow: 0 0 0 5px color-mix(in srgb, var(--amber) 30%, transparent); }
+
+.alarm-banner {
+  flex: 1 1 100%; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 16px; border-radius: 12px; border: 1px solid var(--imp);
+  background: color-mix(in srgb, var(--imp) 16%, var(--panel));
+}
+.alarm-banner > div { flex: 1 1 180px; min-width: 0; }
+.alarm-banner strong { font: 700 18px var(--display); text-transform: uppercase; letter-spacing: .04em; }
+.alarm-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--imp); animation: blink 0.9s steps(2, start) infinite; }
+@keyframes blink { to { visibility: hidden; } }
+
+.overlay.alarm { background: #7a0f1a; animation: flash 0.9s ease-in-out infinite; }
+.overlay.alarm.body { background: #6b4a00; animation-name: flash-body; }
+@keyframes flash { 50% { background: #d22b3c; } }
+@keyframes flash-body { 50% { background: #c98a00; } }
+.overlay.alarm .panel { border: 2px solid #fff; background: var(--hull); gap: 16px; }
+.overlay.alarm .eyebrow { color: #ffb3bb; }
+.overlay.alarm.body .eyebrow { color: var(--amber); }
+.overlay.alarm .big { color: #fff; font-size: 38px; }
+.alarm-instruction { font-size: 17px; font-weight: 600; }
+.alarm-ack { width: 100%; background: #fff; color: var(--hull); padding: 16px; font-size: 16px; }
+
+.sound-banner {
+  background: color-mix(in srgb, var(--amber) 18%, var(--panel)); color: var(--amber);
+  border: 1px dashed var(--amber); font-size: 14px; padding: 10px 14px;
+}
+
+.dead-note {
+  width: 100%; padding: 12px 14px; border-radius: 10px; text-align: left; font-size: 14px;
+  background: color-mix(in srgb, var(--imp) 14%, var(--hull)); border: 1px solid color-mix(in srgb, var(--imp) 50%, transparent);
+}
+.dead-note strong { color: var(--imp); }
+.chip.dead-tag { color: #fff; background: var(--imp); border-color: var(--imp); }
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay.alarm { background: #b0202f; }
+  .overlay.alarm.body { background: #a87400; }
+}

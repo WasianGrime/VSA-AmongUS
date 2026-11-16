@@ -59,6 +59,7 @@
 
   <!-- CONNECTED -->
   <section id="app" class="col" hidden>
+    <button class="sound-banner" id="soundBanner" type="button">Tap here to turn on the alarm sound</button>
     <div class="panel idcard">
       <div>
         <div class="eyebrow">Player ID</div>
@@ -104,7 +105,7 @@
         <div class="role-name" id="roleName"></div>
         <p class="muted small" id="roleHint" style="margin-top:8px"></p>
       </div>
-      <span class="chip dead" id="deadChip" hidden>You're out. Keep doing tasks as a ghost.</span>
+      <div class="dead-note" id="deadChip" hidden><strong>You're dead.</strong> Don't talk about who got you. Keep doing your tasks as a ghost.</div>
     </div>
 
     <!-- tasks -->
@@ -131,11 +132,13 @@
 </div>
 
 <!-- overlays -->
-<div class="overlay meeting" id="meeting" hidden>
+<div class="overlay alarm" id="meeting" hidden>
   <div class="panel">
-    <div class="eyebrow" style="color:var(--amber)">Everyone to the table</div>
-    <div class="big" style="color:var(--amber)">Emergency meeting</div>
-    <p id="meetingReason" class="muted"></p>
+    <div class="eyebrow" id="meetingEyebrow">Alarm from the Keeper</div>
+    <div class="big" id="meetingTitle">Emergency meeting</div>
+    <p class="alarm-instruction">Stop what you're doing and go back to the meeting spot now.</p>
+    <button class="alarm-ack" id="silence">Stop sound, I'm heading back</button>
+    <p class="small muted" id="silenced" hidden>Sound off. This screen stays up until the Keeper ends the meeting.</p>
   </div>
 </div>
 
@@ -204,7 +207,7 @@ async function poll() {
     setLive(false);
   } finally {
     polling = false;
-    if (playerId) pollTimer = setTimeout(poll, document.hidden ? 8000 : 2000);
+    if (playerId) pollTimer = setTimeout(poll, document.hidden ? 4000 : 2000);
   }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
@@ -294,9 +297,22 @@ function render(v) {
     roster.appendChild(c);
   }
 
-  // meeting
-  $('#meeting').hidden = !(playing && game.meeting);
-  if (game.meeting) $('#meetingReason').textContent = game.meeting.reason;
+  // meeting alarm
+  const meetingOn = playing && !!game.meeting;
+  $('#meeting').hidden = !meetingOn;
+  if (meetingOn) {
+    const isBody = game.meeting.kind === 'body';
+    $('#meeting').classList.toggle('body', isBody);
+    $('#meetingTitle').textContent = isBody ? 'Dead body reported' : 'Emergency meeting';
+    $('#meetingEyebrow').textContent = isBody ? 'A body was found' : 'Alarm from the Keeper';
+    if (alarm.meetingAt !== game.meeting.at) { alarm.meetingAt = game.meeting.at; alarm.silenced = false; }
+    $('#silence').hidden = alarm.silenced;
+    $('#silenced').hidden = !alarm.silenced;
+    alarm.silenced ? alarm.stop() : alarm.start();
+  } else {
+    alarm.stop();
+  }
+  if (playing) keepAwake();
 
   // game over
   const ended = game.status === 'ended';
@@ -353,6 +369,63 @@ $('#myName').addEventListener('input', () => { clearTimeout(nameTimer); nameTime
 $('#nameForm').onsubmit = e => { e.preventDefault(); clearTimeout(nameTimer); saveName(); $('#myName').blur(); };
 
 $('#leaveBtn').onclick = () => { store.set(null); playerId = null; showJoin(); };
+
+// ---------- alarm: siren sound + vibration ----------
+const alarm = {
+  ctx: null, timer: null, meetingAt: null, silenced: false,
+  unlock() {
+    try {
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state !== 'running') this.ctx.resume().then(() => this.updateBanner(), () => {});
+    } catch {}
+    this.updateBanner();
+  },
+  ready() { return !!this.ctx && this.ctx.state === 'running'; },
+  updateBanner() { $('#soundBanner').hidden = this.ready(); },
+  beep() {
+    if (this.ready()) {
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+      osc.type = 'square';
+      // two-tone siren
+      osc.frequency.setValueAtTime(880, t);
+      osc.frequency.setValueAtTime(660, t + 0.35);
+      osc.frequency.setValueAtTime(880, t + 0.7);
+      osc.frequency.setValueAtTime(660, t + 1.05);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+      gain.gain.setValueAtTime(0.35, t + 1.35);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+      osc.connect(gain).connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + 1.45);
+    }
+    try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 400]); } catch {}
+  },
+  start() {
+    if (this.timer) return;
+    this.beep();
+    this.timer = setInterval(() => this.beep(), 1800);
+  },
+  stop() {
+    clearInterval(this.timer); this.timer = null;
+    try { navigator.vibrate && navigator.vibrate(0); } catch {}
+  },
+};
+// Browsers only allow sound after the person has tapped the page once.
+['pointerdown', 'keydown', 'touchend'].forEach(ev => window.addEventListener(ev, () => { alarm.unlock(); keepAwake(); }, { passive: true }));
+$('#soundBanner').onclick = () => { alarm.unlock(); alarm.beep(); };
+$('#silence').onclick = () => { alarm.silenced = true; alarm.stop(); if (last) render(last); };
+
+// Keep the screen on during a game so alarms come through.
+let wakeLock = null;
+async function keepAwake() {
+  if (wakeLock || document.hidden || !navigator.wakeLock || !last || last.game.status !== 'playing') return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch { wakeLock = null; }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { keepAwake(); alarm.updateBanner(); } });
 
 function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
