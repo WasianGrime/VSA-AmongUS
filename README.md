@@ -20,10 +20,10 @@ A tracker for playing Among Us in real life. One person is the **Keeper** and ru
 
 ## Putting it on Vercel (play on any connection)
 
-On Vercel, players can join from Wi-Fi, LTE or 5G. The game is saved in a free Upstash Redis database that you add from inside Vercel.
+On Vercel, players can join from Wi-Fi, LTE or 5G. The game is saved in a free Redis database that you add from inside Vercel. Either **Redis** (Redis Cloud, which sets `REDIS_URL`) or **Upstash for Redis** (which sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`) works.
 
 1. Import this repo into Vercel (or keep your existing project). No build settings are needed, since `vercel.json` handles them.
-2. In the project, open **Storage**, choose **Upstash for Redis** (it may be under Marketplace), create a free database and **connect it to this project**. Vercel adds the `KV_REST_API_URL` and `KV_REST_API_TOKEN` settings for you.
+2. In the project, open **Storage**, create a free **Redis** or **Upstash for Redis** database and **connect it to this project**. Vercel adds the connection settings for you.
 3. **Redeploy** so the new settings take effect.
 4. Players open your Vercel address. The Keeper taps **I'm the Keeper** and enters the passcode.
 

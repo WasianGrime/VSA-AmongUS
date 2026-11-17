@@ -6,6 +6,11 @@
   "scripts": {
     "local": "node scripts/local-server.js"
   },
-  "engines": { "node": "22.x" },
-  "license": "MIT"
+  "engines": {
+    "node": "22.x"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "redis": "4.7.0"
+  }
 }
