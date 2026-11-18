@@ -70,6 +70,16 @@
         <div class="error" id="actionError"></div>
       </section>
 
+      <!-- photo proof -->
+      <section class="panel" id="reviewPanel" hidden>
+        <div class="row" style="justify-content:space-between">
+          <h2>Proof to review <span class="count-badge" id="reviewCount">0</span></h2>
+          <span class="muted small">Tap a photo to see it full size</span>
+        </div>
+        <div class="review-grid" id="reviewList"></div>
+        <p class="muted small" id="reviewEmpty">No photos waiting. When a player finishes a task and uploads proof, it shows up here.</p>
+      </section>
+
       <!-- progress -->
       <section class="panel progress">
         <div class="progress-head">
@@ -126,13 +136,32 @@
         </div>
         <ul class="pool" id="pool"></ul>
         <form id="addTask" class="col" style="gap:8px">
-          <input id="taskName" type="text" maxlength="24" placeholder="Task, e.g. Fix the wiring">
+          <input id="taskName" type="text" maxlength="24" placeholder="Task, e.g. Cup Stack">
           <div class="row">
-            <input id="taskLoc" class="grow" type="text" maxlength="24" placeholder="Location, e.g. Kitchen">
+            <input id="taskLoc" class="grow" type="text" maxlength="80" placeholder="How to prove it, e.g. Photo of the stack">
             <button type="submit" class="sm">Add</button>
           </div>
         </form>
       </section>
+    </div>
+  </div>
+</div>
+
+<!-- full-size photo viewer -->
+<div class="overlay" id="viewer" hidden>
+  <div class="panel viewer-panel">
+    <div class="row" style="justify-content:space-between;width:100%">
+      <div style="text-align:left;min-width:0">
+        <div class="eyebrow" id="viewerWho"></div>
+        <h2 id="viewerTask"></h2>
+      </div>
+      <button class="ghost sm" id="viewerClose">Close</button>
+    </div>
+    <img id="viewerImg" alt="Proof photo">
+    <p class="muted small" id="viewerHint"></p>
+    <div class="row" style="justify-content:center;width:100%">
+      <button class="danger" id="viewerReject">Not valid</button>
+      <button class="go" id="viewerApprove">Approve</button>
     </div>
   </div>
 </div>
@@ -311,10 +340,13 @@ function render(s) {
     const tasksTd = el('td');
     if (p.tasks && p.tasks.length) {
       const d = p.tasks.filter(t => t.done).length;
+      const waiting = p.tasks.filter(t => t.status === 'pending').length;
       const bar = el('div', { className: 'mini-bar' + (p.role === 'impostor' ? ' imp' : '') }, el('span'));
       bar.firstChild.style.width = Math.round(d / p.tasks.length * 100) + '%';
-      const wrap = el('div', { className: 'row', style: 'gap:8px;flex-wrap:nowrap' }, bar, el('span', { className: 'small muted', textContent: d + '/' + p.tasks.length + (p.role === 'impostor' ? ' fake' : '') }));
-      wrap.title = p.tasks.map(t => (t.done ? '✓ ' : '○ ') + t.name + (t.location ? ' (' + t.location + ')' : '')).join('\n');
+      const label = d + '/' + p.tasks.length + (p.role === 'impostor' ? ' fake' : '') + (waiting ? ' · ' + waiting + ' to review' : '');
+      const wrap = el('div', { className: 'row', style: 'gap:8px;flex-wrap:nowrap' }, bar, el('span', { className: 'small ' + (waiting ? 'waiting-text' : 'muted'), textContent: label }));
+      const MARK = { approved: '✓ ', pending: '… ', rejected: '✗ ', todo: '○ ' };
+      wrap.title = p.tasks.map(t => (MARK[t.status] || '○ ') + t.name).join('\n');
       tasksTd.append(wrap);
     } else tasksTd.append(el('span', { className: 'muted small', textContent: '—' }));
     tr.append(tasksTd);
@@ -338,6 +370,8 @@ function render(s) {
     tb.append(tr);
   }
 
+  renderReviews(s);
+
   // urls
   $('#urls').innerHTML = '';
   const urls = s.joinUrls && s.joinUrls.length ? s.joinUrls : [location.origin];
@@ -354,10 +388,76 @@ function render(s) {
   $('#poolCount').textContent = '(' + s.taskPool.length + ')';
   const pool = $('#pool'); pool.innerHTML = '';
   for (const t of s.taskPool) {
-    const info = el('div', {}, el('div', { textContent: t.name, style: 'font-weight:600' }), el('div', { className: 'small muted', textContent: t.location || 'Anywhere' }));
+    const info = el('div', {}, el('div', { textContent: t.name, style: 'font-weight:600' }), el('div', { className: 'small muted', textContent: t.location || 'No proof details' }));
     pool.append(el('li', {}, info, el('button', { className: 'x', textContent: '×', title: 'Remove task', ariaLabel: 'Remove ' + t.name, onclick: () => act('removeTask', { taskId: t.id }) })));
   }
 }
+
+// ---------- photo proof review ----------
+let viewing = null;
+const proofUrl = id => '/api/keeper/proof?id=' + encodeURIComponent(id) + '&token=' + encodeURIComponent(token);
+
+function pendingProofs(s) {
+  const out = [];
+  for (const p of s.players) for (const t of p.tasks || []) {
+    if (t.status === 'pending' && t.proofId) out.push({ player: p, task: t });
+  }
+  return out.sort((a, b) => a.task.submittedAt - b.task.submittedAt);
+}
+
+function timeAgo(ms) {
+  const sec = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  return sec < 60 ? 'just now' : Math.round(sec / 60) + ' min ago';
+}
+
+function review(item, approve) {
+  if (viewing && viewing.task.proofId === item.task.proofId) closeViewer();
+  act('review', { playerId: item.player.id, taskId: item.task.id, approve });
+}
+
+function renderReviews(s) {
+  const items = s.game.status === 'lobby' ? [] : pendingProofs(s);
+  $('#reviewPanel').hidden = s.game.status === 'lobby';
+  $('#reviewCount').textContent = items.length;
+  $('#reviewCount').classList.toggle('hot', items.length > 0);
+  $('#reviewEmpty').hidden = items.length > 0;
+  document.title = (items.length ? '(' + items.length + ') ' : '') + 'VSA Keeper Console';
+  const list = $('#reviewList');
+  list.innerHTML = '';
+  for (const item of items) {
+    const { player: p, task: t } = item;
+    const img = el('img', { src: proofUrl(t.proofId), alt: 'Proof for ' + t.name, loading: 'lazy' });
+    const thumb = el('button', { className: 'review-thumb', title: 'See full size', onclick: () => openViewer(item) }, img);
+    const who = el('div', { className: 'row', style: 'gap:6px' },
+      el('strong', { textContent: p.name || 'Player ' + p.id }),
+      el('span', { className: 'muted small', textContent: '#' + p.id }));
+    if (p.role === 'impostor') who.append(el('span', { className: 'chip imp', textContent: 'Impostor · fake task' }));
+    const info = el('div', { className: 'review-info' }, who,
+      el('div', { className: 'review-task', textContent: t.name }),
+      el('div', { className: 'muted small', textContent: (t.location ? t.location + ' · ' : '') + 'sent ' + timeAgo(t.submittedAt) }));
+    const btns = el('div', { className: 'row', style: 'gap:8px' },
+      el('button', { className: 'danger sm', textContent: 'Not valid', onclick: () => review(item, false) }),
+      el('button', { className: 'go sm', textContent: 'Approve', onclick: () => review(item, true) }));
+    info.append(btns);
+    list.append(el('div', { className: 'review-card' }, thumb, info));
+  }
+  if (viewing && !items.some(i => i.task.proofId === viewing.task.proofId)) closeViewer();
+}
+
+function openViewer(item) {
+  viewing = item;
+  $('#viewerImg').src = proofUrl(item.task.proofId);
+  $('#viewerWho').textContent = (item.player.name || 'Player ' + item.player.id) + ' · #' + item.player.id + (item.player.role === 'impostor' ? ' · impostor (fake task)' : '');
+  $('#viewerTask').textContent = item.task.name;
+  $('#viewerHint').textContent = item.task.location || '';
+  $('#viewer').hidden = false;
+}
+function closeViewer() { viewing = null; $('#viewer').hidden = true; $('#viewerImg').removeAttribute('src'); }
+$('#viewerClose').onclick = closeViewer;
+$('#viewer').addEventListener('click', e => { if (e.target.id === 'viewer') closeViewer(); });
+$('#viewerApprove').onclick = () => viewing && review(viewing, true);
+$('#viewerReject').onclick = () => viewing && review(viewing, false);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && viewing) closeViewer(); });
 
 const saveSettings = () => act('settings', { impostors: $('#impostors').value, tasksPerPlayer: $('#perPlayer').value });
 $('#impostors').onchange = saveSettings;
@@ -369,7 +469,7 @@ $('#addTask').onsubmit = async e => {
   await act('addTask', { name: $('#taskName').value, location: $('#taskLoc').value });
   if (!$('#actionError').textContent) { $('#taskName').value = ''; $('#taskLoc').value = ''; $('#taskName').focus(); }
 };
-$('#resetTasks').onclick = () => ask('Replace the task list with the default tasks?', 'Restore', () => act('resetTasks'));
+$('#resetTasks').onclick = () => ask('Replace the task list with the default games (Memory Match, Jigsaw, Wordle, Cup Stack, Flip Cup, Water Bottle Flip, Paper Ball Toss)?', 'Restore', () => act('resetTasks'));
 $('#clearPlayers').onclick = () => ask('Remove every player? They will need to join again with new IDs.', 'Remove everyone', () => act('clearPlayers'));
 
 if (!token) {

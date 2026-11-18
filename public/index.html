@@ -117,7 +117,8 @@
         <span class="muted small" id="taskCount"></span>
       </div>
       <ul class="tasks" id="taskList"></ul>
-      <p class="muted small">Tap a task once you've done it in real life.</p>
+      <p class="muted small">Finished a task? Tap it and upload a screenshot or photo as proof. It counts once the Keeper approves it.</p>
+      <input type="file" id="proofInput" accept="image/*" hidden>
     </div>
 
     <!-- roster -->
@@ -273,21 +274,30 @@ function render(v) {
   if (inRound) {
     const list = $('#taskList');
     list.innerHTML = '';
+    const STATUS = {
+      todo: 'Tap to upload proof',
+      pending: 'Sent. Waiting for the Keeper to check it',
+      approved: 'Approved',
+      rejected: 'Not accepted. Tap to send a new photo',
+    };
     for (const t of me.tasks) {
+      const status = uploading.has(t.id) ? 'uploading' : (t.status || (t.done ? 'approved' : 'todo'));
       const li = document.createElement('li');
-      li.className = 'task' + (t.done ? ' done' : '');
-      li.tabIndex = 0;
-      li.setAttribute('role', 'checkbox');
-      li.setAttribute('aria-checked', t.done);
-      li.innerHTML = '<span class="box"></span><div><div class="tname"></div><div class="tloc"></div></div>';
+      li.className = 'task is-' + status + (status === 'approved' ? ' done' : '');
+      li.tabIndex = status === 'approved' || status === 'uploading' ? -1 : 0;
+      li.setAttribute('role', 'button');
+      li.innerHTML = '<span class="box"></span><div class="grow"><div class="tname"></div><div class="tloc"></div><div class="tstatus"></div></div>';
       li.querySelector('.tname').textContent = t.name;
       li.querySelector('.tloc').textContent = t.location || '';
-      const toggle = () => post('/api/task', { id: playerId, taskId: t.id, done: !t.done }).catch(err => toast(err.message));
-      li.onclick = toggle;
-      li.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } };
+      li.querySelector('.tstatus').textContent = status === 'uploading' ? 'Uploading…' : STATUS[status];
+      if (status !== 'approved' && status !== 'uploading') {
+        const pick = () => { proofTask = t.id; $('#proofInput').value = ''; $('#proofInput').click(); };
+        li.onclick = pick;
+        li.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); pick(); } };
+      }
       list.appendChild(li);
     }
-    const d = me.tasks.filter(t => t.done).length;
+    const d = me.tasks.filter(t => t.status === 'approved' || (!t.status && t.done)).length;
     $('#taskCount').textContent = d + ' / ' + me.tasks.length + ' done';
   }
 
@@ -431,6 +441,52 @@ async function keepAwake() {
   } catch { wakeLock = null; }
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { keepAwake(); alarm.updateBanner(); } });
+
+// ---------- photo proof ----------
+let proofTask = null;
+const uploading = new Set();
+
+// Shrink the photo on the phone so uploads are quick and small.
+async function shrinkImage(file, maxSide = 1000, quality = 0.72) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Couldn't read that image. Try a screenshot or a different photo."));
+      i.src = url;
+    });
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.naturalWidth * scale);
+    canvas.height = Math.round(img.naturalHeight * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+$('#proofInput').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0];
+  const taskId = proofTask;
+  if (!file || !taskId) return;
+  uploading.add(taskId);
+  if (last) render(last);
+  try {
+    const image = await shrinkImage(file);
+    await post('/api/proof', { id: playerId, taskId, image });
+    toast('Proof sent. The Keeper will check it.');
+  } catch (err) {
+    toast(err.message || 'Upload failed. Try again.');
+  } finally {
+    uploading.delete(taskId);
+    if (last) render(last);
+  }
+});
 
 function toast(msg) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;

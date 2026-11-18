@@ -376,3 +376,44 @@ tr.dead td { opacity: .5; }
 }
 .brand.hero .logo-wrap { margin: 22px 0 26px; }
 .brand.hero .brand-logo { margin-bottom: 0; }
+
+/* ---------- photo proof: player task states ---------- */
+.task .tstatus { font: 600 12px var(--label); letter-spacing: .02em; margin-top: 4px; color: var(--gold); }
+.task.is-todo .box { border-style: dashed; }
+.task.is-todo .box::after { content: '+'; color: var(--gold); font: 700 16px/1 var(--label); }
+.task.is-pending { border-color: color-mix(in srgb, var(--amber) 55%, var(--line)); }
+.task.is-pending .box { border-color: var(--amber); }
+.task.is-pending .box::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); animation: blink 1.4s steps(2, start) infinite; }
+.task.is-pending .tstatus { color: var(--amber); }
+.task.is-rejected { border-color: color-mix(in srgb, var(--imp) 60%, var(--line)); }
+.task.is-rejected .box { border-color: var(--imp); }
+.task.is-rejected .box::after { content: '!'; color: var(--imp); font: 800 15px/1 var(--label); }
+.task.is-rejected .tstatus { color: var(--imp); }
+.task.is-approved { cursor: default; }
+.task.is-approved .tstatus { color: var(--crew); }
+.task.is-uploading { opacity: .65; cursor: progress; }
+.task.is-uploading .box { border-color: var(--gold); border-top-color: transparent; animation: orbit-spin .8s linear infinite; }
+
+/* ---------- photo proof: keeper review ---------- */
+.count-badge {
+  display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 8px; margin-left: 6px;
+  border-radius: 99px; font: 800 13px var(--label); background: var(--panel-2); color: var(--muted); border: 1px solid var(--line);
+}
+.count-badge.hot { background: var(--amber); color: var(--gold-ink); border-color: var(--amber); }
+.review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.review-card {
+  display: flex; gap: 12px; align-items: stretch;
+  background: var(--ground); border: 1px solid color-mix(in srgb, var(--amber) 45%, var(--line)); border-radius: 12px; padding: 10px;
+}
+.review-thumb {
+  flex: none; width: 96px; height: 96px; padding: 0; border-radius: 10px; overflow: hidden;
+  background: var(--panel-2); border: 1px solid var(--line); box-shadow: none; cursor: zoom-in;
+}
+.review-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.review-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.review-task { font: 800 italic 20px/1.1 var(--display); color: var(--gold-2); }
+.review-info .row:last-child { margin-top: auto; padding-top: 6px; }
+.waiting-text { color: var(--amber); font-weight: 600; }
+
+.viewer-panel { max-width: 720px !important; gap: 12px; }
+#viewerImg { width: 100%; max-height: 62vh; object-fit: contain; border-radius: 10px; background: #000; }

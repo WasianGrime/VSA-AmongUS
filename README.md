@@ -9,12 +9,15 @@ A tracker for playing Among Us in real life. One person is the **Keeper** and ru
   - see every player, their ID, role and task progress
   - choose how many impostors and how many tasks each player gets
   - pick impostors themselves, or let the app pick at random
-  - edit the task list (task name and where in the room or house it is)
+  - edit the task list (task name and what proof to send)
+  - review the screenshots and photos players send, and approve them or mark them not valid
   - start the game, call emergency meetings, mark players as out, and end the round
 - **When the game starts**, each player's phone shows:
   - their role (press and hold to see it, so nobody can peek)
-  - the tasks they need to do, which they tick off once done in real life
+  - the tasks they need to do. When they finish one, they tap it and upload a screenshot or photo. It only counts once the Keeper approves it
   - a progress bar for the whole crew's tasks
+- The default tasks are Memory Match, Jigsaw, Wordle, Cup Stack, Flip Cup, Water Bottle Flip and Paper Ball Toss.
+- Photos are shrunk on the phone before uploading, kept for 12 hours at most, and deleted when a new round starts.
 - Impostors get fake tasks that don't count toward progress, and they can see who the other impostors are.
 - The game ends by itself when the crew finishes every task, when every impostor is out, or when the impostors equal the crew. The Keeper can also end it by hand.
 
